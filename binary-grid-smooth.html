@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Binary Grid Animation</title>
+    <style>
+      body {
+        margin: 0;
+        background: black;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="matrix"></canvas>
+    <script>
+      const canvas = document.getElementById("matrix");
+      const ctx = canvas.getContext("2d");
+
+      // Canvas setup
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        initGrid();
+      }
+      window.addEventListener("resize", resizeCanvas);
+
+      // Config
+      const chars = ["0", "1", "."];
+      const fontSize = 16;
+      const inactiveOpacity = 0.25; // transparency for inactive chars
+      const fadeDuration = 600; // ms fade animation
+      const enableColorCrossfade = true; // toggle color crossfade on/off
+      const minChangeInterval = 500; // min ms between updates per cell
+      const maxChangeInterval = 2000; // max ms between updates per cell
+
+      let columns, rows, grid = [];
+
+      function initGrid() {
+        columns = Math.floor(canvas.width / fontSize);
+        rows = Math.floor(canvas.height / fontSize);
+        grid = [];
+
+        const totalCells = columns * rows;
+        const indices = Array.from({ length: totalCells }, (_, i) => i)
+          .sort(() => Math.random() - 0.5);
+
+        const half = Math.floor(totalCells / 2);
+        const pinkIndices = new Set(indices.slice(0, half));
+        const activeIndices = new Set(indices.slice(half));
+
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < columns; x++) {
+            const index = y * columns + x;
+            const isPink = pinkIndices.has(index);
+            const isActive = activeIndices.has(index);
+
+            const cell = {
+              x,
+              y,
+              char: chars[Math.floor(Math.random() * chars.length)],
+              nextChar: null,
+              color: isPink ? "#ff66cc" : "#66ccff",
+              nextColor: null,
+              active: isActive,
+              fadeStart: 0,
+              fading: false,
+              nextUpdate: performance.now() + getRandomInterval(),
+            };
+            grid.push(cell);
+          }
+        }
+      }
+
+      function getRandomInterval() {
+        return Math.random() * (maxChangeInterval - minChangeInterval) + minChangeInterval;
+      }
+
+      function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const now = performance.now();
+
+        for (const cell of grid) {
+          let displayChar = cell.char;
+          let color = cell.color;
+          let alpha = cell.active ? 1 : inactiveOpacity;
+
+          // Update per-cell at its own random interval
+          if (now > cell.nextUpdate && !cell.fading) {
+            startFade(cell, now);
+          }
+
+          // Handle fading transition
+          if (cell.fading) {
+            const progress = Math.min((now - cell.fadeStart) / fadeDuration, 1);
+
+            if (progress < 1) {
+              const mixColor = enableColorCrossfade
+                ? mixHexColors(cell.color, cell.nextColor, progress)
+                : cell.color;
+              ctx.globalAlpha = alpha;
+              ctx.fillStyle = hexToRgba(mixColor, alpha);
+              ctx.fillText(
+                progress < 0.5 ? cell.char : cell.nextChar,
+                cell.x * fontSize + fontSize / 2,
+                cell.y * fontSize + fontSize / 2
+              );
+              continue;
+            } else {
+              // Fade completed
+              cell.char = cell.nextChar;
+              cell.color = cell.nextColor;
+              cell.fading = false;
+              cell.nextUpdate = now + getRandomInterval();
+            }
+          }
+
+          // Normal draw
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = hexToRgba(color, alpha);
+          ctx.fillText(
+            displayChar,
+            cell.x * fontSize + fontSize / 2,
+            cell.y * fontSize + fontSize / 2
+          );
+        }
+
+        ctx.globalAlpha = 1;
+      }
+
+      function startFade(cell, now) {
+        cell.nextChar = chars[Math.floor(Math.random() * chars.length)];
+        cell.nextColor = Math.random() < 0.5 ? "#ff66cc" : "#66ccff";
+        cell.fadeStart = now;
+        cell.fading = true;
+      }
+
+      function hexToRgba(hex, alpha = 1) {
+        const bigint = parseInt(hex.slice(1), 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+
+      function mixHexColors(c1, c2, t) {
+        const toRGB = (hex) => {
+          const bigint = parseInt(hex.slice(1), 16);
+          return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+        };
+        const [r1, g1, b1] = toRGB(c1);
+        const [r2, g2, b2] = toRGB(c2);
+        const r = Math.round(r1 + (r2 - r1) * t);
+        const g = Math.round(g1 + (g2 - g1) * t);
+        const b = Math.round(b1 + (b2 - b1) * t);
+        return `#${((1 << 24) + (r << 16) + (g << 8) + b)
+          .toString(16)
+          .slice(1)}`;
+      }
+
+      function animate() {
+        drawGrid();
+        requestAnimationFrame(animate);
+      }
+
+      resizeCanvas();
+      animate();
+    </script>
+  </body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Binary Grid Animation</title>
+    <style>
+      body {
+        margin: 0;
+        background: black;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="matrix"></canvas>
+    <script>
+      const canvas = document.getElementById("matrix");
+      const ctx = canvas.getContext("2d");
+
+      // Canvas setup
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        initGrid();
+      }
+      window.addEventListener("resize", resizeCanvas);
+
+      // Config
+      const chars = ["0", "1", "."];
+      const fontSize = 20;
+      const inactiveOpacity = 0.25; // transparency for inactive chars
+      const fadeDuration = 600; // ms fade animation
+      const enableColorCrossfade = true; // toggle color crossfade on/off
+      const minChangeInterval = 500; // min ms between updates per cell
+      const maxChangeInterval = 2000; // max ms between updates per cell
+
+      let columns, rows, grid = [];
+
+      function initGrid() {
+        columns = Math.floor(canvas.width / fontSize);
+        rows = Math.floor(canvas.height / fontSize);
+        grid = [];
+
+        const totalCells = columns * rows;
+        const indices = Array.from({ length: totalCells }, (_, i) => i)
+          .sort(() => Math.random() - 0.5);
+
+        const half = Math.floor(totalCells / 2);
+        const pinkIndices = new Set(indices.slice(0, half));
+        const activeIndices = new Set(indices.slice(half));
+
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < columns; x++) {
+            const index = y * columns + x;
+            const isPink = pinkIndices.has(index);
+            const isActive = activeIndices.has(index);
+
+            const cell = {
+              x,
+              y,
+              char: chars[Math.floor(Math.random() * chars.length)],
+              nextChar: null,
+              color: isPink ? "#ff66cc" : "#66ccff",
+              nextColor: null,
+              active: isActive,
+              fadeStart: 0,
+              fading: false,
+              nextUpdate: performance.now() + getRandomInterval(),
+            };
+            grid.push(cell);
+          }
+        }
+      }
+
+      function getRandomInterval() {
+        return Math.random() * (maxChangeInterval - minChangeInterval) + minChangeInterval;
+      }
+
+      function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const now = performance.now();
+
+        for (const cell of grid) {
+          let displayChar = cell.char;
+          let color = cell.color;
+          let alpha = cell.active ? 1 : inactiveOpacity;
+
+          // Update per-cell at its own random interval
+          if (now > cell.nextUpdate && !cell.fading) {
+            startFade(cell, now);
+          }
+
+          // Handle fading transition
+          if (cell.fading) {
+            const progress = Math.min((now - cell.fadeStart) / fadeDuration, 1);
+
+            if (progress < 1) {
+              const mixColor = enableColorCrossfade
+                ? mixHexColors(cell.color, cell.nextColor, progress)
+                : cell.color;
+              ctx.globalAlpha = alpha;
+              ctx.fillStyle = hexToRgba(mixColor, alpha);
+              ctx.fillText(
+                progress < 0.5 ? cell.char : cell.nextChar,
+                cell.x * fontSize + fontSize / 2,
+                cell.y * fontSize + fontSize / 2
+              );
+              continue;
+            } else {
+              // Fade completed
+              cell.char = cell.nextChar;
+              cell.color = cell.nextColor;
+              cell.fading = false;
+              cell.nextUpdate = now + getRandomInterval();
+            }
+          }
+
+          // Normal draw
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = hexToRgba(color, alpha);
+          ctx.fillText(
+            displayChar,
+            cell.x * fontSize + fontSize / 2,
+            cell.y * fontSize + fontSize / 2
+          );
+        }
+
+        ctx.globalAlpha = 1;
+      }
+
+      function startFade(cell, now) {
+        cell.nextChar = chars[Math.floor(Math.random() * chars.length)];
+        cell.nextColor = Math.random() < 0.5 ? "#ff66cc" : "#66ccff";
+        cell.fadeStart = now;
+        cell.fading = true;
+      }
+
+      function hexToRgba(hex, alpha = 1) {
+        const bigint = parseInt(hex.slice(1), 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+
+      function mixHexColors(c1, c2, t) {
+        const toRGB = (hex) => {
+          const bigint = parseInt(hex.slice(1), 16);
+          return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+        };
+        const [r1, g1, b1] = toRGB(c1);
+        const [r2, g2, b2] = toRGB(c2);
+        const r = Math.round(r1 + (r2 - r1) * t);
+        const g = Math.round(g1 + (g2 - g1) * t);
+        const b = Math.round(b1 + (b2 - b1) * t);
+        return `#${((1 << 24) + (r << 16) + (g << 8) + b)
+          .toString(16)
+          .slice(1)}`;
+      }
+
+      function animate() {
+        drawGrid();
+        requestAnimationFrame(animate);
+      }
+
+      resizeCanvas();
+      animate();
+    </script>
+  </body>
+</html>

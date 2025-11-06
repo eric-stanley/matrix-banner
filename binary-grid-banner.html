@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matrix Binary Animation</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      background: black;
+      width: 600px;
+      height: 150px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrix" width="600" height="150"></canvas>
+  <script>
+    const canvas = document.getElementById("matrix");
+    const ctx = canvas.getContext("2d");
+
+    const chars = ["0", "1", "."];
+    const transparency = 0.25; // inactive transparency
+    const fontSize = 18;
+    const cols = Math.floor(canvas.width / fontSize);
+    const rows = Math.floor(canvas.height / fontSize);
+    const grid = [];
+
+    // assign half pink, half blue randomly
+    const totalCells = cols * rows;
+    const pinkIndices = new Set();
+    while (pinkIndices.size < totalCells / 2) {
+      pinkIndices.add(Math.floor(Math.random() * totalCells));
+    }
+
+    // initialize grid
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const idx = y * cols + x;
+        const color = pinkIndices.has(idx)
+          ? "rgb(255, 105, 180)" // pink
+          : "rgb(0, 191, 255)"; // blue
+        const active = Math.random() > 0.5;
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        const nextChar = chars[Math.floor(Math.random() * chars.length)];
+        const changeInterval = 500 + Math.random() * 1500; // 0.5s–2s
+
+        grid.push({
+          x,
+          y,
+          char,
+          nextChar,
+          color,
+          active,
+          lastChange: Date.now(),
+          changeInterval,
+          opacity: active ? 1 : transparency,
+          fadeDirection: 0 // 0=idle, 1=fade-out, 2=fade-in
+        });
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = `${fontSize}px monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      const now = Date.now();
+
+      grid.forEach((cell) => {
+        if (now - cell.lastChange > cell.changeInterval) {
+          cell.fadeDirection = 1;
+          cell.lastChange = now;
+          cell.nextChar = chars[Math.floor(Math.random() * chars.length)];
+        }
+
+        if (cell.fadeDirection === 1) {
+          cell.opacity -= 0.05;
+          if (cell.opacity <= 0) {
+            cell.char = cell.nextChar;
+            cell.fadeDirection = 2;
+          }
+        } else if (cell.fadeDirection === 2) {
+          cell.opacity += 0.05;
+          if (cell.opacity >= (cell.active ? 1 : transparency)) {
+            cell.fadeDirection = 0;
+          }
+        }
+
+        ctx.fillStyle = cell.color
+          .replace("rgb", "rgba")
+          .replace(")", `, ${cell.opacity})`);
+        ctx.fillText(
+          cell.char,
+          cell.x * fontSize + fontSize / 2,
+          cell.y * fontSize + fontSize / 2
+        );
+      });
+
+      requestAnimationFrame(draw);
+    }
+
+    draw();
+  </script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Binary Grid Animation</title>
+    <style>
+      body {
+        margin: 0;
+        background: black;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="matrix"></canvas>
+    <script>
+      const canvas = document.getElementById("matrix");
+      const ctx = canvas.getContext("2d");
+
+      // Canvas size
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        initGrid();
+      }
+
+      window.addEventListener("resize", resizeCanvas);
+
+      const chars = ["0", "1", "."];
+      const fontSize = 20;
+      let columns, rows, grid = [];
+
+      // Adjustable transparency for inactive characters
+      const inactiveOpacity = 0.25; // you can tweak this
+
+      function initGrid() {
+        columns = Math.floor(canvas.width / fontSize);
+        rows = Math.floor(canvas.height / fontSize);
+        grid = [];
+
+        // Total cells
+        const totalCells = columns * rows;
+        const totalHalf = Math.floor(totalCells / 2);
+
+        // Random indices for color and active states
+        const shuffledIndices = Array.from({ length: totalCells }, (_, i) => i)
+          .sort(() => Math.random() - 0.5);
+
+        const pinkIndices = new Set(shuffledIndices.slice(0, totalHalf));
+        const activeIndices = new Set(
+          shuffledIndices.slice(totalHalf, totalHalf * 1.5)
+        );
+
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < columns; x++) {
+            const index = y * columns + x;
+            const isPink = pinkIndices.has(index);
+            const isActive = activeIndices.has(index);
+
+            grid.push({
+              x,
+              y,
+              char: chars[Math.floor(Math.random() * chars.length)],
+              color: isPink ? "#ff66cc" : "#66ccff",
+              active: isActive,
+            });
+          }
+        }
+      }
+
+      function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        for (const cell of grid) {
+          const alpha = cell.active ? 1 : inactiveOpacity;
+          ctx.fillStyle = `${hexToRgba(cell.color, alpha)}`;
+          ctx.fillText(
+            cell.char,
+            cell.x * fontSize + fontSize / 2,
+            cell.y * fontSize + fontSize / 2
+          );
+        }
+      }
+
+      function hexToRgba(hex, alpha) {
+        const bigint = parseInt(hex.slice(1), 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+
+      // Change characters every second
+      function updateCharacters() {
+        for (const cell of grid) {
+          cell.char = chars[Math.floor(Math.random() * chars.length)];
+        }
+        drawGrid();
+      }
+
+      resizeCanvas();
+      drawGrid();
+      setInterval(updateCharacters, 1000);
+    </script>
+  </body>
+</html>
