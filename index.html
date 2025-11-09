@@ -1,116 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Matrix Binary Animation</title>
-  <style>
-    body {
-      margin: 0;
-      background: black;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    canvas {
-      display: block;
-      background: black;
-      width: 600px;
-      height: 150px;
-      border-radius: 8px;
-    }
-  </style>
-</head>
-<body>
-  <canvas id="matrix" width="600" height="150"></canvas>
-  <script>
-    const canvas = document.getElementById("matrix");
-    const ctx = canvas.getContext("2d");
-
-    const chars = ["0", "1", "."];
-    const transparency = 0.25; // inactive transparency
-    const fontSize = 18;
-    const cols = Math.floor(canvas.width / fontSize);
-    const rows = Math.floor(canvas.height / fontSize);
-    const grid = [];
-
-    // assign half pink, half blue randomly
-    const totalCells = cols * rows;
-    const pinkIndices = new Set();
-    while (pinkIndices.size < totalCells / 2) {
-      pinkIndices.add(Math.floor(Math.random() * totalCells));
-    }
-
-    // initialize grid
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        const idx = y * cols + x;
-        const color = pinkIndices.has(idx)
-          ? "rgb(255, 105, 180)" // pink
-          : "rgb(0, 191, 255)"; // blue
-        const active = Math.random() > 0.5;
-        const char = chars[Math.floor(Math.random() * chars.length)];
-        const nextChar = chars[Math.floor(Math.random() * chars.length)];
-        const changeInterval = 500 + Math.random() * 1500; // 0.5s–2s
-
-        grid.push({
-          x,
-          y,
-          char,
-          nextChar,
-          color,
-          active,
-          lastChange: Date.now(),
-          changeInterval,
-          opacity: active ? 1 : transparency,
-          fadeDirection: 0 // 0=idle, 1=fade-out, 2=fade-in
-        });
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sharp Binary Grid Animation</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: black;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
       }
-    }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        background: black;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="matrix"></canvas>
+    <script>
+      const canvas = document.getElementById("matrix");
+      const ctx = canvas.getContext("2d", { alpha: false });
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = `${fontSize}px monospace`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      const chars = ["0", "1", "."];
+      const inactiveOpacity = 0.25;
+      const enableColorFade = true;
+      const flipChance = 0.1; // 10%
 
-      const now = Date.now();
+      function setupCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        ctx.scale(dpr, dpr);
+        ctx.font = `16px Consolas, monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.imageSmoothingEnabled = false;
+      }
 
-      grid.forEach((cell) => {
-        if (now - cell.lastChange > cell.changeInterval) {
-          cell.fadeDirection = 1;
-          cell.lastChange = now;
-          cell.nextChar = chars[Math.floor(Math.random() * chars.length)];
-        }
+      let columns, rows, grid = [];
+      const fontSize = 16;
 
-        if (cell.fadeDirection === 1) {
-          cell.opacity -= 0.05;
-          if (cell.opacity <= 0) {
-            cell.char = cell.nextChar;
-            cell.fadeDirection = 2;
+      function initGrid() {
+        columns = Math.floor(window.innerWidth / fontSize);
+        rows = Math.floor(window.innerHeight / fontSize);
+        grid = [];
+
+        const totalCells = columns * rows;
+        const totalHalf = Math.floor(totalCells / 2);
+        const shuffled = Array.from({ length: totalCells }, (_, i) => i).sort(() => Math.random() - 0.5);
+        const pinkIndices = new Set(shuffled.slice(0, totalHalf));
+        const activeIndices = new Set(shuffled.slice(totalHalf, totalHalf * 1.5));
+
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < columns; x++) {
+            const idx = y * columns + x;
+            grid.push({
+              x,
+              y,
+              char: chars[Math.floor(Math.random() * chars.length)],
+              color: pinkIndices.has(idx) ? "#ff66cc" : "#66ccff",
+              targetColor: pinkIndices.has(idx) ? "#ff66cc" : "#66ccff",
+              active: activeIndices.has(idx),
+              changeTime: Date.now() + Math.random() * 2000 + 500,
+            });
           }
-        } else if (cell.fadeDirection === 2) {
-          cell.opacity += 0.05;
-          if (cell.opacity >= (cell.active ? 1 : transparency)) {
-            cell.fadeDirection = 0;
-          }
         }
+      }
 
-        ctx.fillStyle = cell.color
-          .replace("rgb", "rgba")
-          .replace(")", `, ${cell.opacity})`);
-        ctx.fillText(
-          cell.char,
-          cell.x * fontSize + fontSize / 2,
-          cell.y * fontSize + fontSize / 2
-        );
+      function hexToRgb(hex) {
+        const bigint = parseInt(hex.slice(1), 16);
+        return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+      }
+
+      function interpolateColor(c1, c2, t) {
+        const rgb1 = hexToRgb(c1), rgb2 = hexToRgb(c2);
+        return `rgb(${Math.round(rgb1[0] + (rgb2[0] - rgb1[0]) * t)},
+                    ${Math.round(rgb1[1] + (rgb2[1] - rgb1[1]) * t)},
+                    ${Math.round(rgb1[2] + (rgb2[2] - rgb1[2]) * t)})`;
+      }
+
+      function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const now = Date.now();
+        for (const cell of grid) {
+          if (now > cell.changeTime) {
+            // Randomly flip active/inactive with small chance
+            if (Math.random() < flipChance) {
+              cell.active = !cell.active;
+            }
+            cell.char = chars[Math.floor(Math.random() * chars.length)];
+            cell.changeTime = now + Math.random() * 2000 + 500;
+
+            if (enableColorFade) {
+              cell.targetColor = cell.color === "#ff66cc" ? "#66ccff" : "#ff66cc";
+            }
+          }
+
+          const fadeProgress = Math.min(1, (cell.changeTime - now) / 200);
+          const color = enableColorFade
+            ? interpolateColor(cell.color, cell.targetColor, 1 - fadeProgress)
+            : cell.color;
+
+          const alpha = cell.active ? 1 : inactiveOpacity;
+          ctx.fillStyle = color.replace("rgb", "rgba").replace(")", `,${alpha})`);
+
+          // Align to integer pixel positions to prevent blur
+          const drawX = Math.round(cell.x * fontSize + fontSize / 2);
+          const drawY = Math.round(cell.y * fontSize + fontSize / 2);
+          ctx.fillText(cell.char, drawX, drawY);
+        }
+        requestAnimationFrame(drawGrid);
+      }
+
+      window.addEventListener("resize", () => {
+        setupCanvas();
+        initGrid();
       });
 
-      requestAnimationFrame(draw);
-    }
-
-    draw();
-  </script>
-</body>
+      setupCanvas();
+      initGrid();
+      drawGrid();
+    </script>
+  </body>
 </html>
